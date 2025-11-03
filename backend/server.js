@@ -1,4 +1,5 @@
 const express = require('express');
+const cors = require('cors');
 const dotenv = require('dotenv');
 const routes = require('./routes/routes.js');
 dotenv.config();
@@ -21,6 +22,7 @@ const connectDB = async() => {
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(cors());
 app.use('/apiv1/users', routes);
 
 app.listen(PORT, () => {

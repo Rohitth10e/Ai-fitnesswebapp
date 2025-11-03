@@ -22,13 +22,154 @@ const generatePlan = async (req, res) => {
         !weight ||
         !height ||
         !fitnessGoals ||
+        !fitnessGoals.primaryGoal ||
+        !fitnessGoals.currentFitnessLevel ||
         !workoutPreferences ||
-        !dietaryPreferences
+        !workoutPreferences.workoutLocation ||
+        !dietaryPreferences ||
+        !dietaryPreferences.type
     ) {
         return res.status(400).json({ message: 'Please provide all required fields.' });
     }
 
+    const userDetailsForPrompt = {
+        name,
+        age,
+        gender,
+        weight,
+        height,
+        fitnessGoals,
+        workoutPreferences,
+        dietaryPreferences,
+        additionalInformation,
+    };
+
     try {
+        const prompt = `
+You are a professional AI fitness and nutrition planner. Your task is to generate a comprehensive, personalized plan based on the user's details.
+
+### USER DETAILS
+${JSON.stringify(userDetailsForPrompt, null, 2)}
+
+---
+
+### OUTPUT REQUIREMENTS
+You must return **valid JSON only**. Do not include any markdown, comments, or any text outside of the single, valid JSON object.
+
+Follow **exactly this structure**, including all specified keys.
+
+{
+  "workoutPlan": {
+    "overview": "A brief, encouraging overview of the 7-day workout plan and its philosophy, tailored to the user's goal.",
+    "days": [
+      {
+        "day": "Day 1",
+        "focus": "Full Body Strength",
+        "exercises": [
+          { "name": "Squats", "sets": "3", "reps": "8-10", "rest": "60s" },
+          { "name": "Push-ups", "sets": "3", "reps": "As many as possible", "rest": "60s" }
+        ]
+      },
+      { "day": "Day 2", "focus": "Cardio & Core", "exercises": [] },
+      { "day": "Day 3", "focus": "Upper Body Focus", "exercises": [] },
+      { "day": "Day 4", "focus": "Lower Body Focus", "exercises": [] },
+      { "day": "Day 5", "focus": "Active Recovery or Rest", "exercises": [] },
+      { "day": "Day 6", "focus": "Full Body Circuit", "exercises": [] },
+      { "day": "Day 7", "focus": "Rest Day", "exercises": [] }
+    ]
+  },
+  "dietPlan": {
+    "overview": "A short summary of the nutritional strategy, including its main goals (e.g., 'This plan creates a sustainable calorie deficit for fat loss...').",
+    "dailyCalories": "2200 kcal",
+    "macros": {
+      "protein": "150g",
+      "carbs": "250g",
+      "fats": "60g"
+    },
+    "hydration": "Drink at least 3 liters (approx. 10-12 glasses) of water per day, increasing on workout days.",
+    "supplements": ["Whey Protein (post-workout)", "Vitamin D", "Omega-3 Fish Oil"],
+    "meals": [
+      {
+        "meal": "Breakfast",
+        "time": "7:00 AM - 8:00 AM",
+        "options": [
+          {
+            "name": "Protein Oats with Berries",
+            "ingredients": "1/2 cup rolled oats, 1 scoop whey protein, 1 cup mixed berries, 1 tbsp chia seeds.",
+            "calories": "450", "protein": "35g", "carbs": "60g", "fats": "10g"
+          },
+          {
+            "name": "Scrambled Eggs on Toast",
+            "ingredients": "3 large eggs, 2 slices whole-wheat toast, 1/2 avocado, handful of spinach.",
+            "calories": "500", "protein": "30g", "carbs": "35g", "fats": "28g"
+          }
+        ]
+      },
+      {
+        "meal": "Lunch",
+        "time": "12:00 PM - 1:00 PM",
+        "options": [
+          {
+            "name": "Grilled Chicken Salad",
+            "ingredients": "150g grilled chicken breast, 2 cups mixed greens, 1/2 cup quinoa, assorted vegetables, light vinaigrette.",
+            "calories": "550", "protein": "45g", "carbs": "40g", "fats": "20g"
+          }
+        ]
+      },
+      {
+        "meal": "Dinner",
+        "time": "6:00 PM - 7:00 PM",
+        "options": [
+          {
+            "name": "Salmon with Roasted Vegetables",
+            "ingredients": "150g salmon fillet, 1 cup broccoli, 1 cup sweet potato (roasted).",
+            "calories": "600", "protein": "40g", "carbs": "50g", "fats": "25g"
+          }
+        ]
+      },
+      {
+        "meal": "Snack",
+        "time": "3:00 PM or Post-Workout",
+        "options": [
+          {
+            "name": "Greek Yogurt with Almonds",
+            "ingredients": "1 cup plain Greek yogurt, 1/4 cup almonds, 1 tsp honey.",
+            "calories": "300", "protein": "25g", "carbs": "20g", "fats": "15g"
+          }
+        ]
+      }
+    ]
+  }
+}
+
+### CRITICAL INSTRUCTIONS
+1.  **Fill All 7 Days:** The \`workoutPlan.days\` array must contain 7 objects, one for each day of the week. For "Rest" or "Active Recovery" days, set the \`focus\` appropriately and leave the \`exercises\` array empty.
+2.  **Provide Exercise Rest:** Every exercise object **must** include a \`rest\` key with a time string (e.g., "60s", "90s").
+3.  **Multiple Meal Options:** For each object in the \`dietPlan.meals\` array, you **must** provide at least one (1) or two (2) different meal choices in its \`options\` array.
+4.  **Complete Meal Info:** Every single meal \`option\` must include its \`name\`, \`ingredients\` (as a string), \`calories\`, \`protein\`, \`carbs\`, and \`fats\`.
+5.  **Adhere to Preferences:** Strictly follow the user's nested \`fitnessGoals\`, \`workoutPreferences\`, and \`dietaryPreferences\` (e.g., vegetarian, gluten-free) when generating all content.
+6.  **JSON Only:** The entire output must be a single, perfectly valid JSON object, starting with \`{\` and ending with \`}\`. No extra text.
+`;
+
+        const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+        const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' }); 
+
+        const result = await model.generateContent(prompt);
+        const text = result.response.text();
+        const jsonText = text.replace(/```json|```/g, '').trim();
+
+        let plan;
+        try {
+            plan = JSON.parse(jsonText);
+        } catch (parseError) {
+            console.error('JSON parsing error:', parseError);
+            console.error('Raw AI Output:', text); 
+            return res.status(500).json({
+                message: 'Error parsing AI response. The model did not return valid JSON.',
+                rawText: text,
+            });
+        }
+
         const userData = new UserData({
             name,
             age,
@@ -39,119 +180,14 @@ const generatePlan = async (req, res) => {
             workoutPreferences,
             dietaryPreferences,
             additionalInformation,
+            aiPlan: plan, 
         });
-        await userData.save();
-
-        const prompt = `
-You are a professional AI fitness and nutrition planner.
-
-Generate a personalized plan based on the user details below.
-
-### USER DETAILS
-${JSON.stringify({
-            name,
-            age,
-            gender,
-            weight,
-            height,
-            fitnessGoals,
-            workoutPreferences,
-            dietaryPreferences,
-            additionalInformation,
-        }, null, 2)}
-
----
-
-### OUTPUT REQUIREMENTS
-You must return **valid JSON only**, no markdown, no comments, no extra text.
-
-Follow **exactly this structure**:
-
-{
-  "workoutPlan": {
-    "schedule": [
-      { "day": "", "focus": "" }
-    ],
-    "routineDetails": [
-      {
-        "day": "",
-        "focus": "",
-        "warmUp": "",
-        "exercises": [
-          { "name": "", "sets": "", "reps": "", "notes": "" }
-        ],
-        "coolDown": ""
-      }
-    ],
-    "generalNotes": ""
-  },
-  "dietPlan": {
-    "calorieTarget": "",
-    "macronutrientBreakdown": {
-      "protein": "",
-      "carbohydrates": "",
-      "fats": ""
-    },
-    "notes": "",
-    "dailyPlan": [
-      {
-        "meal": "",
-        "time": "",
-        "description": "",
-        "items": [],
-        "calories": "",
-        "protein": "",
-        "carbs": "",
-        "fats": ""
-      }
-    ],
-    "approxTotals": {
-      "calories": "",
-      "protein": "",
-      "carbs": "",
-      "fats": ""
-    }
-  },
-  "tips": [
-    {
-      "category": "",
-      "points": [""]
-    }
-  ]
-}
-
-Ensure:
-- All meals include nutrients (calories, protein, carbs, fats).
-- Adapt workouts based on fitness goal, level, and location.
-- Respect dietary type & restrictions.
-- Output must be 100% valid JSON — no markdown or text outside JSON.
-`;
-
-        const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-        const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
-
-        const result = await model.generateContent(prompt);
-
-        const text = result.response.text();
-        const jsonText = text.replace(/```json|```/g, '').trim();
-
-        let plan;
-        try {
-            plan = JSON.parse(jsonText);
-        } catch (parseError) {
-            console.error('JSON parsing error:', parseError);
-            return res.status(200).json({
-                message: 'Plan generated, but output was not valid JSON.',
-                rawText: text,
-            });
-        }
-        userData.aiPlan = plan;
+        
         await userData.save();
 
         res.status(201).json({
             message: 'User data saved and AI plan generated successfully.',
             userData,
-            aiPlan: plan,
         });
 
     } catch (error) {

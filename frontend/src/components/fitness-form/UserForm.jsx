@@ -58,7 +58,7 @@ export const UserForm = ({ onPlanGenerated, theme }) => {
         }
 
         try {
-            const response = await fetch('/apiv1/users/generate-plan', {
+            const response = await fetch('http://localhost:3000/apiv1/users/generate-plan', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(formData),
@@ -72,6 +72,7 @@ export const UserForm = ({ onPlanGenerated, theme }) => {
 
             console.log('Generated Plan:', result);
             setSuccess('Plan generated successfully! Check your console.');
+            onPlanGenerated(result);
 
         } catch (err) {
             console.error('Error generating plan:', err);

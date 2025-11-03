@@ -2,6 +2,7 @@ import { useState } from "react"
 import { UserForm } from "./components/fitness-form/UserForm.jsx"
 import { motion } from 'framer-motion'
 import MotivationSection from "./components/banner/MotivationSection.jsx"
+import PlanDisplay  from "./components/plans/PlanDisplay.jsx"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './components/ui/tabs.tsx'
 import { Button } from './components/ui/button.tsx'
 import { Sparkles, Moon, Sun } from "lucide-react"

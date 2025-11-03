@@ -1,5 +1,6 @@
 const UserData = require('../models/userModel');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
+const { Readable } = require('stream');
 require('dotenv').config();
 
 const generatePlan = async (req, res) => {
@@ -208,4 +209,75 @@ const showPlans = async (req, res) => {
     }
 }
 
-module.exports = { generatePlan, showPlans };
+const generateNarration = async (req, res) => {
+     const { text } = req.body;
+     const ELEVEN_LABS_API_KEY = process.env.ELEVEN_LABS_API_KEY;
+     const VOICE_ID = '21m00Tcm4TlvDq8ikWAM'; 
+
+     if (!text) {
+         return res.status(400).json({ message: 'Please provide text to narrate.' });
+     }
+
+     if (!ELEVEN_LABS_API_KEY) {
+         console.error('Eleven Labs API key is not set in .env');
+         return res.status(500).json({ message: 'Server configuration error: Missing narration API key.' });
+     }
+
+     const apiUrl = `https://api.elevenlabs.io/v1/text-to-speech/${VOICE_ID}/stream`;
+     
+     const options = {
+         method: 'POST',
+         headers: {
+             'Content-Type': 'application/json',
+             'xi-api-key': ELEVEN_LABS_API_KEY,
+             'Accept': 'audio/mpeg',
+         },
+         body: JSON.stringify({
+             text: text,
+             model_id: 'eleven_multilingual_v2',
+             voice_settings: {
+                 stability: 0.5,
+                 similarity_boost: 0.75,
+             },
+         }),
+     };
+
+     try {
+         const response = await fetch(apiUrl, options);
+
+         if (!response.ok) {
+             const errorBody = await response.text();
+             console.error('Eleven Labs API error:', response.status, errorBody);
+             return res.status(response.status).json({ message: 'Failed to generate speech.', details: errorBody });
+         }
+
+         // --- 🚀 STREAMING FIX ---
+         
+         // 1. Set the header so the browser knows to play the audio
+         res.setHeader('Content-Type', 'audio/mpeg');
+
+         // 2. Get the Web Stream from the fetch response
+         const webStream = response.body;
+
+         // 3. Convert it to a Node.js Readable stream
+         const nodeStream = Readable.fromWeb(webStream);
+
+         // 4. Pipe the audio stream directly to the client's response
+         //    This sends audio data immediately as it arrives.
+         nodeStream.pipe(res);
+
+         // 5. Handle stream errors
+         nodeStream.on('error', (err) => {
+             console.error('Error piping stream:', err);
+             if (!res.headersSent) {
+                 res.status(500).json({ message: 'Error streaming audio' });
+             }
+         });
+
+     } catch (error) {
+         console.error('Error in generateNarration controller:', error);
+         res.status(500).json({ message: 'Internal server error', error: error.message });
+     }
+};
+
+module.exports = { generatePlan, showPlans, generateNarration };

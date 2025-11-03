@@ -9,6 +9,8 @@ import { Label } from '../ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Textarea } from '../ui/textarea';
 
+
+
 export const UserForm = ({ onPlanGenerated, theme }) => {
     const [isGenerating, setIsGenerating] = useState(false);
     const [error, setError] = useState(null);
@@ -308,7 +310,7 @@ export const UserForm = ({ onPlanGenerated, theme }) => {
                                                     dietaryPreferences: {
                                                         ...prev.dietaryPreferences,
                                                         restrictions: e.target.value
-                                                            .split(',')
+                                                            .split(' ')
                                                             .map(s => s.trim())
                                                             .filter(Boolean)
                                                     }

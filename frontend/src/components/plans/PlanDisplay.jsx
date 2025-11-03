@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -23,21 +23,124 @@ import { Badge } from '../ui/badge.tsx';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion.tsx';
 import { toast } from 'sonner';
 
+const generateNarrationText = (plan) => {
+    if (!plan?.userData?.aiPlan) return "";
+    const { aiPlan, fitnessGoals, age } = plan.userData;
+    
+    let text = `Hello. Here is your AI fitness plan. `;
+    text += `You are ${age} years old and your primary goal is ${fitnessGoals.primaryGoal}. `;
+
+    // Workout Plan
+    text += "Let's review the workout plan. ";
+    text += `${aiPlan.workoutPlan.overview}. `;
+    
+    (aiPlan.workoutPlan?.days || []).forEach(day => {
+        text += `On ${day.day}, the focus is ${day.focus}. `;
+        if (day.exercises && day.exercises.length > 0) {
+            text += "You will perform: ";
+            (day.exercises || []).forEach(ex => {
+                text += `${ex.name}: ${ex.sets} sets of ${ex.reps} reps, with ${ex.rest} rest. `;
+            });
+        } else {
+            text += "This is a rest or active recovery day. ";
+        }
+    });
+
+    // Diet Plan
+    text += "Now for the diet plan. ";
+    text += `${aiPlan.dietPlan.overview}. `;
+    text += `Your target is ${aiPlan.dietPlan.dailyCalories} calories. `;
+    if (aiPlan.dietPlan.macros) {
+        text += `Macros are: ${aiPlan.dietPlan.macros.protein} of protein, ${aiPlan.dietPlan.macros.carbs} of carbs, and ${aiPlan.dietPlan.macros.fats} of fats. `;
+    }
+    text += `For hydration, ${aiPlan.dietPlan.hydration}. `;
+
+    text += "Here are your meal options: ";
+    (aiPlan.dietPlan?.meals || []).forEach(meal => {
+        text += `For ${meal.meal} around ${meal.time}: `;
+        const options = (meal.options || []).map(opt => opt.name).join(', or ');
+        text += options + ". ";
+    });
+    
+    text += "Your plan narration is complete. Good luck!";
+    return text;
+};
+
 export default function PlanDisplay({ theme, plan }) {
     const [isNarrating, setIsNarrating] = useState(false);
     const [selectedImage, setSelectedImage] = useState(null);
 
-    const handleNarration = () => {
+    const audioSourceRef = useRef(null);
+    const audioContextRef = useRef(null);
+
+    const handleNarration = async () => {
+        // --- STOP NARRATION LOGIC ---
         if (isNarrating) {
+            if (audioSourceRef.current) {
+                try {
+                    audioSourceRef.current.stop(); // Stop the sound
+                } catch (e) {
+                    console.warn("Audio stop error:", e.message);
+                }
+            }
+            if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
+                audioContextRef.current.close().catch(console.warn); // Clean up context
+            }
             setIsNarrating(false);
             toast.info('Narration stopped');
-        } else {
-            setIsNarrating(true);
-            toast.success('Narration started');
-            setTimeout(() => {
+            return; // Exit function
+        }
+
+        // --- START NARRATION LOGIC ---
+        setIsNarrating(true);
+        toast.success('Starting narration...');
+
+        try {
+            const textToSpeak = generateNarrationText(plan);
+
+            if (!textToSpeak) {
+                throw new Error('Could not find plan text to narrate.');
+            }
+
+            // 1. Call your backend narration endpoint
+            // IMPORTANT: Update '/api/generate-narration' to your actual route if it's different
+            const response = await fetch('http://localhost:3000/apiv1/users/generate-narration', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text: textToSpeak }),
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.message || 'Failed to fetch audio');
+            }
+
+            // 2. Get the audio data as an ArrayBuffer
+            const audioData = await response.arrayBuffer();
+
+            // 3. Use Web Audio API to play it
+            audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
+            const audioBuffer = await audioContextRef.current.decodeAudioData(audioData);
+
+            audioSourceRef.current = audioContextRef.current.createBufferSource();
+            audioSourceRef.current.buffer = audioBuffer;
+            audioSourceRef.current.connect(audioContextRef.current.destination);
+            audioSourceRef.current.start(0);
+            toast.dismiss(); // Dismiss "Starting..." toast
+            toast.info("Narration playing...");
+
+            // 4. Handle when the audio finishes playing
+            audioSourceRef.current.onended = () => {
                 setIsNarrating(false);
                 toast.info('Narration completed');
-            }, 5000);
+                if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
+                    audioContextRef.current.close().catch(console.warn);
+                }
+            };
+        } catch (error) {
+            console.error('Narration error:', error);
+            setIsNarrating(false);
+            toast.error(error.message || 'Failed to start narration.');
         }
     };
 

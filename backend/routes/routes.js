@@ -1,7 +1,8 @@
 const express = require('express');
 const router = express.Router();
-const { getUserData } = require('../controllers/controller');
+const { generatePlan, showPlans } = require('../controllers/controller');
 
-router.post('/user-data', getUserData);
+router.post('/user-data', generatePlan);
+router.get('/plans', showPlans);
 
-export default router;
+module.exports = router;

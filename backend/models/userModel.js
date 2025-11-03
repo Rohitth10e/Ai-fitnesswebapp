@@ -1,31 +1,40 @@
 const mongoose = require('mongoose');
 
-const userSchema = new Mongoose.Schema({
-    name: { typeof: String, required: true },
-    age: { typeof: Number, required: true },
-    gender: { typeof: String, required: true },
-    weight: { typeof: Number, required: true },
-    height: { typeof: Number, required: true },
+const userSchema = new mongoose.Schema({
+    name: { type: String, required: true },
+    age: { type: Number, required: true },
+    gender: { type: String, required: true },
+    weight: { type: Number, required: true },
+    height: { type: Number, required: true },
+
     fitnessGoals: {
         primaryGoal: {
-            typeof: String, enum: [
-                "Weight Loss", "Muscle Gain", "General Fitness", "Build Strength", "Improve Endurance", "Increase Flexibility"],
-            required: true
-        },
-        currentFitnessLevel: {
-            typeof: String, enum: [
-                "Beginner", "Intermediate", "Advanced"],
-            required: true
-        }
-    },
-    workoutPreferences: {
-        workoutlocation: {
-            typeof: String, enum: [
-                "Home", "Gym", "Outdoor", "hybrid",
+            type: String,
+            enum: [
+                "Weight Loss",
+                "Muscle Gain",
+                "General Fitness",
+                "Build Strength",
+                "Improve Endurance",
+                "Increase Flexibility"
             ],
             required: true
         },
+        currentFitnessLevel: {
+            type: String,
+            enum: ["Beginner", "Intermediate", "Advanced"],
+            required: true
+        }
     },
+
+    workoutPreferences: {
+        workoutLocation: {
+            type: String,
+            enum: ["Home", "Gym", "Outdoor", "Hybrid"],
+            required: true
+        }
+    },
+
     dietaryPreferences: {
         type: {
             type: String,
@@ -34,12 +43,17 @@ const userSchema = new Mongoose.Schema({
         },
         restrictions: [{ type: String }]
     },
+
     additionalInformation: {
         medicalConditions: { type: String },
         stressLevel: { type: String, enum: ["Low", "Medium", "High"] }
     },
+    aiPlan: {
+        type: Object,
+        default: null
+    },
 
     createdAt: { type: Date, default: Date.now }
-})
+});
 
-export const UserData = mongoose.model('UserData', userSchema);
+module.exports = mongoose.model('UserData', userSchema);

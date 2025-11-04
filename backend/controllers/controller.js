@@ -201,7 +201,7 @@ Follow **exactly this structure**, including all specified keys.
 const showPlans = async (req, res) => {
   try {
     const plans = await UserData.find({ aiPlan: { $ne: null } })
-      .select('name age gender fitnessGoals aiPlan createdAt')
+      .select('name age gender weight height fitnessGoals aiPlan createdAt')
       .sort({ createdAt: -1 });
     res.status(200).json({ plans });
   } catch (error) {

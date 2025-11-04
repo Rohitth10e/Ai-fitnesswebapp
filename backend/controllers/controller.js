@@ -281,4 +281,54 @@ const generateNarration = async (req, res) => {
   }
 };
 
-module.exports = { generatePlan, showPlans, generateNarration };
+const PEXELS_KEY = process.env.PEXELS_API_KEY;
+const API_URL = 'https://api.pexels.com/v1/search';
+
+const generateImage = async (req, res) => {
+    const { query } = req.body;
+
+    if (!query) {
+        return res.status(400).json({ message: 'Please provide an image query.' });
+    }
+
+    if (!PEXELS_KEY) {
+        console.error('Pexels API key is not set.');
+        return res.status(500).json({ message: 'Server configuration error: Missing image API key.' });
+    }
+
+    try {
+        const response = await fetch(`${API_URL}?query=${encodeURIComponent(query)}&per_page=1&orientation=landscape`, {
+            method: 'GET',
+            headers: {
+                'Authorization': PEXELS_KEY,
+            }
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            console.error('Pexels API error:', errorData);
+            throw new Error(errorData.error || 'Failed to fetch image.');
+        }
+
+        const data = await response.json();
+
+        if (!data.photos || data.photos.length === 0) {
+            return res.status(404).json({ message: 'No image found for that query.' });
+        }
+
+        const image = data.photos[0];
+
+        res.status(200).json({ 
+            imageUrl: image.src.large,
+            altText: image.alt,
+            sourceName: image.photographer,
+            sourceUrl: image.photographer_url 
+        });
+
+    } catch (error) {
+        console.error('Error in generateImage controller:', error);
+        res.status(500).json({ message: 'Internal server error', error: error.message });
+    }
+};
+
+module.exports = { generatePlan, showPlans, generateNarration, generateImage };

@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'; 
+import { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -13,7 +13,8 @@ import {
     Flame,
     TrendingUp,
     Save,
-    Image as ImageIcon
+    Image as ImageIcon,
+    Loader2
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card.tsx';
 import { Button } from '../ui/button.tsx';
@@ -21,18 +22,19 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs.tsx';
 import { Badge } from '../ui/badge.tsx';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion.tsx';
 import { toast } from 'sonner';
+import ImageModal from '../modals/ImageModal.jsx';
 
 const generateNarrationText = (plan) => {
     if (!plan?.userData?.aiPlan) return "";
     const { aiPlan, fitnessGoals, age } = plan.userData;
-    
+
     let text = `Hello. Here is a summary of your new AI fitness plan. `;
     text += `This plan is designed for a ${age} year old whose primary goal is ${fitnessGoals.primaryGoal}. `;
 
     // Workout Plan Summary
     text += "For your workout: ";
     text += `${aiPlan.workoutPlan.overview}. `;
-    
+
     // Diet Plan Summary
     text += "Now for your diet: ";
     text += `${aiPlan.dietPlan.overview}. `;
@@ -47,6 +49,7 @@ export default function PlanDisplay({ theme, plan }) {
     const [isNarrating, setIsNarrating] = useState(false);
     const [selectedImage, setSelectedImage] = useState(null);
     const [availableVoices, setAvailableVoices] = useState([]);
+    const [isImageLoading, setIsImageLoading] = useState(false);
 
     const audioSourceRef = useRef(null);
     const audioContextRef = useRef(null);
@@ -75,21 +78,21 @@ export default function PlanDisplay({ theme, plan }) {
 
             // --- NEW: Voice Selection Logic ---
             if (availableVoices.length > 0) {
-                let selectedVoice = availableVoices.find(voice => 
+                let selectedVoice = availableVoices.find(voice =>
                     voice.name.includes('Google') && (voice.lang === 'en-US' || voice.lang === 'en-GB')
                 );
-                
+
                 if (!selectedVoice) {
-                    selectedVoice = availableVoices.find(voice => 
+                    selectedVoice = availableVoices.find(voice =>
                         voice.name.includes('Microsoft') && (voice.lang === 'en-US' || voice.lang === 'en-GB')
                     );
                 }
                 if (!selectedVoice) {
-                    selectedVoice = availableVoices.find(voice => 
+                    selectedVoice = availableVoices.find(voice =>
                         voice.lang === 'en-US' || voice.lang === 'en-GB'
                     );
                 }
-                
+
                 if (selectedVoice) {
                     utterance.voice = selectedVoice;
                 }
@@ -110,12 +113,12 @@ export default function PlanDisplay({ theme, plan }) {
                 setIsNarrating(false);
                 toast.error('An error occurred during narration.');
             };
-            
+
             window.speechSynthesis.speak(utterance);
 
         } catch (error) {
             console.error('Narration error:', error);
-            setIsNarrating(false); 
+            setIsNarrating(false);
             toast.error(error.message || 'Failed to start narration.');
         }
     };
@@ -130,14 +133,14 @@ export default function PlanDisplay({ theme, plan }) {
         };
 
         loadVoices();
-        
+
         window.speechSynthesis.onvoiceschanged = loadVoices;
 
         return () => {
             if (window.speechSynthesis) {
                 window.speechSynthesis.cancel();
             }
-            window.speechSynthesis.onvoiceschanged = null; 
+            window.speechSynthesis.onvoiceschanged = null;
         };
     }, []);
 
@@ -223,9 +226,40 @@ export default function PlanDisplay({ theme, plan }) {
         toast.success('Plan saved to your library!');
     };
 
-    const handleImageClick = (type, name) => {
+    const handleImageClick = async (type, name) => {
         setSelectedImage({ type, name });
-        toast.info(`Showing image for ${type}: ${name}`);
+        setIsImageLoading(true);
+        toast.dismiss();
+
+        try {
+            const response = await fetch('http://localhost:3000/apiv1/users/generate-image', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ query: name }),
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.message || 'Failed to fetch image.');
+            }
+
+            const imageData = await response.json();
+
+            setSelectedImage(prev => ({
+                ...prev,
+                ...imageData,
+            }));
+
+        } catch (err) {
+            console.error('Image fetch error:', err);
+            toast.error(err.message);
+            setSelectedImage(prev => ({
+                ...prev,
+                imageUrl: null,
+            }));
+        } finally {
+            setIsImageLoading(false);
+        }
     };
 
     if (!plan || !plan.userData || !plan.userData.aiPlan) {
@@ -245,6 +279,12 @@ export default function PlanDisplay({ theme, plan }) {
             transition={{ duration: 0.5 }}
             className="space-y-6"
         >
+            <ImageModal
+                data={selectedImage}
+                isLoading={isImageLoading}
+                onClose={() => setSelectedImage(null)}
+                theme={theme}
+            />
             <Card className={theme === 'dark' ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-300'}>
                 <CardContent className="pt-6">
                     <div className="flex flex-wrap gap-3">
@@ -360,8 +400,8 @@ export default function PlanDisplay({ theme, plan }) {
                                                         animate={{ opacity: 1, x: 0 }}
                                                         transition={{ delay: exIndex * 0.1 }}
                                                         className={`p-4 rounded-lg border ${theme === 'dark'
-                                                                ? 'bg-gray-800 border-gray-700'
-                                                                : 'bg-gray-50 border-gray-200'
+                                                            ? 'bg-gray-800 border-gray-700'
+                                                            : 'bg-gray-50 border-gray-200'
                                                             }`}
                                                     >
                                                         <div className="flex items-start justify-between gap-4">
@@ -498,8 +538,8 @@ export default function PlanDisplay({ theme, plan }) {
                                                     animate={{ opacity: 1, scale: 1 }}
                                                     transition={{ delay: optIndex * 0.1 }}
                                                     className={`p-4 rounded-lg border cursor-pointer transition-all hover:shadow-lg ${theme === 'dark'
-                                                            ? 'bg-gray-900 border-gray-600 hover:border-purple-500'
-                                                            : 'bg-white border-gray-300 hover:border-purple-500'
+                                                        ? 'bg-gray-900 border-gray-600 hover:border-purple-500'
+                                                        : 'bg-white border-gray-300 hover:border-purple-500'
                                                         }`}
                                                     onClick={() => handleImageClick('meal', option.name)}
                                                 >

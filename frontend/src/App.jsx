@@ -2,6 +2,7 @@ import { useState } from "react"
 import { UserForm } from "./components/fitness-form/UserForm.jsx"
 import { motion } from 'framer-motion'
 import MotivationSection from "./components/banner/MotivationSection.jsx"
+import SavedPlans from "./components/plans/SavedPlans.jsx"
 import PlanDisplay  from "./components/plans/PlanDisplay.jsx"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './components/ui/tabs.tsx'
 import { Button } from './components/ui/button.tsx'
@@ -86,7 +87,7 @@ function App() {
           </TabsContent>
 
           <TabsContent value="saved" className="mt-6">
-            {/* <SavedPlans onLoadPlan={handleLoadPlan} theme={theme} /> */}
+            <SavedPlans onLoadPlan={handleLoadPlan} theme={theme} />
           </TabsContent>
         </Tabs>
       </main>

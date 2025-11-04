@@ -25,7 +25,7 @@ export default function SavedPlans({ onLoadPlan, theme }) {
     useEffect(() => {
         const fetchPlans = async () => {
             try {
-                const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/apiv1/users/plans}`, {
+                const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/apiv1/users/plans`, {
                     method: 'GET'
                 })
 
@@ -60,7 +60,7 @@ export default function SavedPlans({ onLoadPlan, theme }) {
 
     const handleDeletePlan = async (planId, planName) => {
         try {
-            const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/apiv1/users/plans/${planId}}`, {
+            const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/apiv1/users/plans/${planId}`, {
                 method: 'DELETE',
             });
 

@@ -124,7 +124,7 @@ export const UserForm = ({ onPlanGenerated, theme }) => {
         }
 
         try {
-            const response = await fetch('http://localhost:3000/apiv1/users/generate-plan', {
+            const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/apiv1/users/generate-plan}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(formData),

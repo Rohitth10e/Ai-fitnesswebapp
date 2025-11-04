@@ -331,4 +331,15 @@ const generateImage = async (req, res) => {
     }
 };
 
-module.exports = { generatePlan, showPlans, generateNarration, generateImage };
+const deletePlan = async (req, res) => {
+  const {id} = req.params;
+  try {
+    await UserData.findByIdAndDelete(id);
+    res.status(200).json({message: 'Plan deleted successfully'});
+  } catch(err){
+    console.error('Error deleting plan:', err);
+    res.status(500).json({message: 'Internal server error', error: err.message});
+  }
+}
+
+module.exports = { generatePlan, showPlans, generateNarration, generateImage, deletePlan };

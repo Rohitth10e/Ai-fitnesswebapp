@@ -1,6 +1,7 @@
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import { motion } from 'framer-motion';
 import { Loader2, Sparkles, User, Target, Dumbbell, MapPin, Utensils, Heart } from 'lucide-react';
+import { toast } from 'sonner';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
@@ -9,6 +10,69 @@ import { Label } from '../ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Textarea } from '../ui/textarea';
 
+import {
+    AlertDialog,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from '../ui/alert-dialog.tsx';
+
+const motivationalQuotes = [
+    "The only bad workout is the one that didn't happen.",
+    "Your body can stand almost anything. It's your mind you have to convince.",
+    "Success isn't always about greatness. It's about consistency.",
+    "The hard part isn't getting your body in shape. The hard part is getting your mind in shape.",
+    "Don't limit your challenges. Challenge your limits."
+];
+
+const GeneratingPlanModal = ({ isOpen, theme }) => {
+    const [quoteIndex, setQuoteIndex] = useState(0);
+
+    useEffect(() => {
+        if (isOpen) {
+            const interval = setInterval(() => {
+                setQuoteIndex((prevIndex) => (prevIndex + 1) % motivationalQuotes.length);
+            }, 4000); // Change quote every 4 seconds
+            return () => clearInterval(interval);
+        }
+    }, [isOpen]);
+
+    return (
+        <AlertDialog open={isOpen}>
+            <AlertDialogContent className={theme === 'dark' ? 'bg-gray-900 border-gray-800' : ''}>
+                <AlertDialogHeader>
+                    <AlertDialogTitle className="flex items-center justify-center text-center">
+                        Generating Your Plan
+                    </AlertDialogTitle>
+                    
+
+                    <AlertDialogDescription asChild>
+                        <div className="text-center pt-4">
+                            <div className="flex flex-col items-center justify-center gap-4">
+                                <Loader2 className="w-12 h-12 animate-spin text-purple-500" />
+                                
+                                <p>This may take a few moments. Please wait...</p>
+                                
+                                <motion.div
+                                    key={quoteIndex}
+                                    initial={{ opacity: 0, y: 10 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    transition={{ duration: 0.5 }}
+                                    className={`italic p-4 border rounded-md min-h-[60px] w-full flex items-center justify-center ${
+                                        theme === 'dark' ? 'border-gray-700 bg-gray-800' : 'border-gray-50'
+                                    }`}
+                                >
+                                    "{motivationalQuotes[quoteIndex]}"
+                                </motion.div>
+                            </div>
+                        </div>
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+            </AlertDialogContent>
+        </AlertDialog>
+    );
+};
 
 
 export const UserForm = ({ onPlanGenerated, theme }) => {
@@ -90,6 +154,7 @@ export const UserForm = ({ onPlanGenerated, theme }) => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
         >
+            <GeneratingPlanModal isOpen={isGenerating} theme={theme} />
             <Card className={
                 theme === 'dark'
                     ? 'bg-gray-900 border-gray-800'

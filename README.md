@@ -2,6 +2,7 @@
 
 **Backed & Certified by Dr. Rakshith Gowda (MBBS, CIMS Chikkamagaluru)**  
 Your smart companion for sustainable fitness — focusing on **fat loss, muscle gain, and budget-friendly health hacks.**
+https://ai-fitnesswebapp.netlify.app/
 
 ---
 

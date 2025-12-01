@@ -95,6 +95,8 @@ function App() {
         <div className="container mx-auto px-4 py-6 text-center">
           <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
             © 2025 AI Fitness Coach.
+            <p>created by Rohith</p>
+            <p>Backed & Certified by Dr. Rakshith Gowda (MBBS, CIMS Chikkamagaluru)</p>
           </p>
         </div>
       </footer>
